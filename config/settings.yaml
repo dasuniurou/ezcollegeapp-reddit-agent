@@ -1,0 +1,37 @@
+subreddits:
+  - ApplyingToCollege
+  - college
+  - SAT
+  - ACT
+  - chanceme
+
+keywords:
+  - college application
+  - common app
+  - commonapp
+  - personal statement
+  - admissions
+  - college essay
+  - application help
+  - apply to college
+  - college counselor
+  - application process
+  - supplemental essays
+  - activity list
+
+rate_limits:
+  max_replies_per_day: 10
+  max_posts_per_day: 2
+  min_delay_between_replies_seconds: 300
+
+llm:
+  provider: openai          # overridden by LLM_PROVIDER env var
+  openai_model: gpt-4o
+  gemini_model: gemini-1.5-pro
+
+reddit:
+  post_limit: 25            # posts to scan per subreddit per run
+  scan_interval_seconds: 3600
+
+dry_run: true               # overridden by DRY_RUN env var
+review_mode: false          # overridden by REVIEW_MODE env var

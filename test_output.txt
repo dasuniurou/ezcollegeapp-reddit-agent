@@ -1,0 +1,161 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.7, pytest-9.0.2, pluggy-1.6.0 -- /home/myid/ps47974/miniconda3/bin/python
+cachedir: .pytest_cache
+rootdir: /home/myid/ps47974/ezcommon_market_agent
+plugins: anyio-4.8.0, mock-3.15.1
+collecting ... collected 32 items
+
+tests/test_dry_run.py::TestRedditToolDryRun::test_dry_run_no_praw_client 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_dry_run.py::TestRedditToolDryRun::test_dry_run_reply_prints_and_returns_true 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_dry_run.py::TestRedditToolDryRun::test_dry_run_make_post_prints_and_returns_none 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_dry_run.py::TestRedditToolDryRun::test_dry_run_scan_yields_nothing 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+WARNING  tools.reddit_tool:reddit_tool.py:88 DRY_RUN: scan_subreddit called but no Reddit connection — yielding nothing.
+PASSED
+tests/test_dry_run.py::TestRedditToolDryRun::test_dry_run_does_not_write_review_queue 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+
+============================================================
+[DRY-RUN] Would reply to post post1:
+------------------------------------------------------------
+reply text
+============================================================
+
+PASSED
+tests/test_dry_run.py::TestReplyAgentDryRun::test_reply_agent_calls_llm_and_dry_runs 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_dry_run.py::TestReplyAgentDryRun::test_reply_agent_marks_post_replied_even_in_dry_run 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+
+============================================================
+[DRY-RUN] Would reply to post post999:
+------------------------------------------------------------
+Totally get the struggle! Start with a specific memory or moment. EZCollegeApp (ezcollegeapp.com) is a tool that helped me a lot with this — it even auto-filled my Common App from my transcript. Hope that helps!
+============================================================
+
+PASSED
+tests/test_dry_run.py::TestReplyAgentDryRun::test_reply_agent_respects_daily_limit 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+WARNING  agents.reply_agent:reply_agent.py:78 Daily reply limit reached (1). Skipping.
+
+============================================================
+[DRY-RUN] Would reply to post id1:
+------------------------------------------------------------
+Totally get the struggle! Start with a specific memory or moment. EZCollegeApp (ezcollegeapp.com) is a tool that helped me a lot with this — it even auto-filled my Common App from my transcript. Hope that helps!
+============================================================
+
+PASSED
+tests/test_dry_run.py::TestPostAgentDryRun::test_post_agent_generates_and_dry_runs 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+INFO     agents.post_agent:post_agent.py:109 Post created in r/ApplyingToCollege: I used EZCollegeApp to finally get my college list and forms sorted — here's what I learned
+PASSED
+tests/test_dry_run.py::TestPostAgentDryRun::test_post_agent_respects_daily_limit 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+
+============================================================
+[DRY-RUN] Would create post in r/ApplyingToCollege:
+TITLE: I used EZCollegeApp to finally get my college list and forms sorted — here's what I learned
+------------------------------------------------------------
+After weeks of chaos, I uploaded my transcript to EZCollegeApp (ezcollegeapp.com).
+It recommended my college list AND auto-filled my Common App fields. Saved me hours.
+Highly recommend checking it out if you're overwhelmed. Feel free to AMA!
+============================================================
+
+INFO     agents.post_agent:post_agent.py:109 Post created in r/ApplyingToCollege: I used EZCollegeApp to finally get my college list and forms sorted — here's what I learned
+WARNING  agents.post_agent:post_agent.py:70 Daily post limit reached (1). Skipping.
+PASSED
+tests/test_fixtures.py::TestMemoryTool::test_has_replied_false_initially PASSED
+tests/test_fixtures.py::TestMemoryTool::test_mark_replied_persists PASSED
+tests/test_fixtures.py::TestMemoryTool::test_daily_counter_increments PASSED
+tests/test_fixtures.py::TestMemoryTool::test_daily_post_counter PASSED
+tests/test_fixtures.py::TestMemoryTool::test_reply_log_append PASSED
+tests/test_fixtures.py::TestMemoryTool::test_no_duplicate_post_ids_in_state PASSED
+tests/test_fixtures.py::TestMonitorAgentKeywordFilter::test_relevant_post_passes_keyword_filter 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestMonitorAgentKeywordFilter::test_irrelevant_post_fails_keyword_filter 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestMonitorAgentKeywordFilter::test_already_replied_post_is_skipped 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestMonitorAgentRelevanceClassification::test_is_relevant_returns_true 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestMonitorAgentRelevanceClassification::test_is_relevant_returns_false 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestMonitorAgentRelevanceClassification::test_malformed_json_defaults_to_not_relevant 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+WARNING  agents.monitor_agent:monitor_agent.py:107 Relevance check failed for abc123: Expecting value: line 1 column 1 (char 0)
+PASSED
+tests/test_fixtures.py::TestReplyAgentSelfCritique::test_self_critique_approves_good_reply 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestReplyAgentSelfCritique::test_self_critique_rejects_spammy_reply 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestReplyAgentSelfCritique::test_self_critique_bad_json_defaults_to_approve 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+WARNING  agents.reply_agent:reply_agent.py:136 Self-critique failed: Expecting value: line 1 column 1 (char 0) — approving by default.
+PASSED
+tests/test_fixtures.py::TestReplyAgentSelfCritique::test_rejected_reply_not_submitted_or_logged 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+INFO     agents.reply_agent:reply_agent.py:101 Reply for abc123 rejected by self-critique. Skipping.
+PASSED
+tests/test_fixtures.py::TestPostAgentOutputParsing::test_parse_valid_output 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+
+============================================================
+[DRY-RUN] Would create post in r/ApplyingToCollege:
+TITLE: How I finally nailed my Common App essay
+------------------------------------------------------------
+Long story short, I used EZCollegeApp and it auto-filled my Common App.
+Check it out at ezcollegeapp.com.
+============================================================
+
+INFO     agents.post_agent:post_agent.py:109 Post created in r/ApplyingToCollege: How I finally nailed my Common App essay
+PASSED
+tests/test_fixtures.py::TestPostAgentOutputParsing::test_parse_missing_body_returns_none 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+ERROR    agents.post_agent:post_agent.py:93 Failed to parse post output:
+TITLE: Just a title with no body
+PASSED
+tests/test_fixtures.py::TestPostAgentOutputParsing::test_invalid_format_raises 
+-------------------------------- live log call ---------------------------------
+INFO     tools.reddit_tool:reddit_tool.py:77 RedditTool initialized in DRY_RUN mode
+PASSED
+tests/test_fixtures.py::TestLLMClientValidation::test_unsupported_provider_raises PASSED
+tests/test_fixtures.py::TestLLMClientValidation::test_missing_openai_key_raises PASSED
+tests/test_fixtures.py::TestLLMClientValidation::test_missing_gemini_key_raises PASSED
+
+============================== 32 passed in 0.94s ==============================
