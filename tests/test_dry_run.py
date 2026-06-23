@@ -197,7 +197,7 @@ class TestPostAgentDryRun:
             max_daily_posts=1,
         )
         t1, b1 = agent.post("ApplyingToCollege", "story")
-        t2, b2 = agent.post("ApplyingToCollege", "resource")
+        t2, b2 = agent.post("ApplyingToCollege", "tips")
 
         assert t1 is not None
         assert t2 is None   # blocked by limit

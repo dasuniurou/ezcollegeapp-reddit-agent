@@ -1,23 +1,162 @@
+# Subreddits scanned each cycle. Names are case-sensitive on Reddit's side but the
+# public JSON endpoint is case-insensitive. Higher-traffic, heavily-moderated subs
+# (e.g. ApplyingToCollege) warrant the most conservative mention style — see
+# prompts/subreddit_<name>.md guides. Add a guide file per sub to tune voice.
 subreddits:
-  - ApplyingToCollege
-  - college
+  # — Core application advice —
+  - ApplyingToCollege        # the largest, highest-intent admissions community
+  - college                  # general college life + some admissions
+  - chanceme                 # profile/chances evaluations
+  - CollegeAdmissions        # admissions news + process questions
+  - ApplyingToCollegeUK      # UK-focused (lower priority; keep voice neutral)
+
+  # — Essays & application components —
+  - CollegeEssays            # essay drafting/feedback
+  - CollegeEssayReview       # essay review requests
+
+  # — Standardized testing —
   - SAT
   - ACT
-  - chanceme
+  - APStudents               # AP courses/exams (feeds academics keywords)
 
+  # — Financial aid & scholarships —
+  - FinancialAid
+  - scholarships
+
+  # — Transfers & international —
+  - TransferStudents
+  - intltocollege            # international applicants to US colleges
+
+# Pre-filter: a post must contain at least one of these (case-insensitive substring
+# match) before it reaches the LLM relevance gate. Phrases are kept specific to avoid
+# false positives — short tokens like "ED"/"EA"/"act"/"sat" are intentionally NOT used
+# bare because substring matching would catch "edited", "fact", "Saturday", etc.
+# Grouped to mirror the community tag taxonomy (subtags.md).
 keywords:
+  # — General / application process —
   - college application
   - common app
   - commonapp
-  - personal statement
-  - admissions
-  - college essay
-  - application help
   - apply to college
-  - college counselor
+  - applying to college
+  - application help
+  - application advice
+  - application tips
   - application process
+  - admissions
+
+  # — Application stage (ED/EA/RD/waitlist/results) —
+  - early decision
+  - early action
+  - applying early
+  - regular decision
+  - waitlist
+  - waitlisted
+  - deferred
+  - got accepted
+  - got into
+  - acceptance rate
+  - decision day
+
+  # — Essays —
+  - personal statement
+  - college essay
+  - common app essay
+  - main essay
+  - supplemental essay
   - supplemental essays
+  - supplementals
+  - uc essay
+  - personal insight question
+  - essay topic
+  - essay prompt
+  - essay feedback
+  - essay review
+  - review my essay
+  - why this school
+  - why us essay
+  - why major
+
+  # — School selection —
+  - college list
+  - school list
+  - list review
+  - chance me
+  - chanceme
+  - what are my chances
+  - reach school
+  - match school
+  - safety school
+  - target school
+  - reach match safety
+  - choosing a major
+  - what major
+  - undecided major
+  - college ranking
+
+  # — Standardized testing & academics —
+  - sat score
+  - act score
+  - sat prep
+  - act prep
+  - test optional
+  - superscore
+  - class rank
+  - course rigor
+  - ap class
+  - ap course
+  - ap exam
+
+  # — Profile building —
+  - extracurricular
   - activity list
+  - activities list
+  - internship
+  - summer program
+  - pre-college
+  - research experience
+  - letter of recommendation
+  - recommendation letter
+  - rec letter
+  - teacher rec
+  - counselor rec
+
+  # — Special topics —
+  - financial aid
+  - fafsa
+  - css profile
+  - net price
+  - scholarship
+  - merit aid
+  - merit scholarship
+  - international student
+  - international applicant
+  - first gen
+  - first-generation
+  - first generation
+  - recruited athlete
+
+  # — Advising, interviews, tools —
+  - college counselor
+  - college consultant
+  - admissions counselor
+  - private counselor
+  - college advisor
+  - diy application
+  - college interview
+  - alumni interview
+  - interview prep
+
+  # — Abbreviations (safe due to word-boundary matching in monitor_agent.py;
+  #   these would false-positive under plain substring matching) —
+  - ED
+  - EA
+  - REA
+  - RD
+  - ECs
+  - PIQ
+  - LOR
+  - LORs
 
 rate_limits:
   max_replies_per_day: 10
@@ -28,6 +167,13 @@ llm:
   provider: openai          # overridden by LLM_PROVIDER env var
   openai_model: gpt-4o
   gemini_model: gemini-1.5-pro
+  openai_embed_model: text-embedding-3-small   # RAG always embeds via OpenAI
+
+rag:
+  enabled: true
+  top_k: 3                  # knowledge-base entries injected per reply
+  kb_file: knowledge_base/general-all-merged.json
+  cache_file: knowledge_base/embeddings_cache.npz
 
 reddit:
   post_limit: 25            # posts to scan per subreddit per run

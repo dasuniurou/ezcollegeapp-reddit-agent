@@ -57,6 +57,17 @@ def tmp_memory_dir(tmp_path):
 # Mock LLMClient
 # ---------------------------------------------------------------------------
 
+def _fake_embed(texts):
+    """Deterministic fixed-dim vectors for tests (no API call)."""
+    import hashlib
+
+    vectors = []
+    for t in texts:
+        h = hashlib.sha256(t.encode("utf-8")).digest()
+        vectors.append([b / 255.0 for b in h[:16]])  # 16-dim unit-ish vector
+    return vectors
+
+
 @pytest.fixture()
 def mock_llm():
     """LLMClient that returns canned responses without hitting any API."""
@@ -64,10 +75,11 @@ def mock_llm():
     llm.chat.return_value = (
         "Great question! Writing a compelling Common App essay starts with finding "
         "a story only you can tell. Focus on a specific moment rather than a "
-        "broad summary. If you'd like structured feedback, EZCollegeApp (ezcollegeapp.com) "
-        "has an AI advisor chatbot that can answer all your essay and application questions — worth a try. "
+        "broad summary. When I was applying I used EZCollegeApp's school-by-school essay "
+        "workspace to keep my supplements organized, which took some of the chaos out of it. "
         "Good luck!"
     )
+    llm.embed.side_effect = _fake_embed
     return llm
 
 
@@ -97,11 +109,13 @@ def mock_llm_approved_reply():
             return '{"approved": true, "feedback": ""}'
         return (
             "Totally get the struggle! Start with a specific memory or moment. "
-            "EZCollegeApp (ezcollegeapp.com) is a tool that helped me a lot with this — it even auto-filled my Common App from my transcript. "
+            "When I was applying I used EZCollegeApp's Common App autofill to pull my details "
+            "from my transcript, which saved me from re-typing everything. "
             "Hope that helps!"
         )
 
     llm.chat.side_effect = side_effect
+    llm.embed.side_effect = _fake_embed
     return llm
 
 

@@ -16,12 +16,22 @@ class LLMClient:
 
     SUPPORTED_PROVIDERS = ("openai", "gemini")
 
-    def __init__(self, provider: Optional[str] = None, model: Optional[str] = None):
+    # Embeddings always go through OpenAI, regardless of the chat provider.
+    DEFAULT_EMBED_MODEL = "text-embedding-3-small"
+
+    def __init__(
+        self,
+        provider: Optional[str] = None,
+        model: Optional[str] = None,
+        embed_model: Optional[str] = None,
+    ):
         """
         Args:
             provider: "openai" or "gemini". Falls back to LLM_PROVIDER env var,
                       then to "openai" as default.
             model:    Model name override. If None, uses the provider default.
+            embed_model: OpenAI embedding model used by embed(). Defaults to
+                      text-embedding-3-small.
         """
         self.provider = (
             provider
@@ -35,7 +45,9 @@ class LLMClient:
             )
 
         self.model = model or self._default_model()
+        self.embed_model = embed_model or self.DEFAULT_EMBED_MODEL
         self._client = self._build_client()
+        self._embed_client = None  # lazily built OpenAI client for embeddings
 
     # ------------------------------------------------------------------
     # Public API
@@ -57,9 +69,49 @@ class LLMClient:
             return self._openai_chat(system, user)
         return self._gemini_chat(system, user)
 
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """
+        Embed a list of texts and return one vector per input.
+
+        Embeddings always go through OpenAI (text-embedding-3-small by default),
+        independent of the chat provider, so a Gemini-based setup can still
+        retrieve from the knowledge base.
+        """
+        if not texts:
+            return []
+        client = self._get_embed_client()
+        logger.debug("[openai/%s] Embedding %d text(s)", self.embed_model, len(texts))
+
+        vectors: list[list[float]] = []
+        # OpenAI accepts up to 2048 inputs per request; chunk to stay under it.
+        for start in range(0, len(texts), 2048):
+            batch = texts[start:start + 2048]
+            resp = client.embeddings.create(model=self.embed_model, input=batch)
+            vectors.extend(item.embedding for item in resp.data)
+        return vectors
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _get_embed_client(self):
+        """Lazily build an OpenAI client used solely for embeddings."""
+        if self._embed_client is not None:
+            return self._embed_client
+        if self.provider == "openai":
+            # Reuse the already-built chat client.
+            self._embed_client = self._client
+            return self._embed_client
+
+        from openai import OpenAI  # type: ignore
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise EnvironmentError(
+                "OPENAI_API_KEY is not set — required for embeddings (RAG retrieval)."
+            )
+        self._embed_client = OpenAI(api_key=api_key)
+        return self._embed_client
 
     def _default_model(self) -> str:
         defaults = {

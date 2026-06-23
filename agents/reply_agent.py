@@ -15,6 +15,7 @@ from tools.prompt_loader import (
     load_yaml_prompt,
     render,
 )
+from tools.rag_tool import RAGTool
 from tools.reddit_tool import RedditPost, RedditTool
 
 logger = logging.getLogger(__name__)
@@ -31,15 +32,18 @@ Approve if:
 - The reply genuinely addresses the poster's question or concern with real advice
 - The tone is friendly and peer-like, as if written by a fellow student
 - Any mention of EZCollegeApp is brief (1-2 sentences), comes AFTER the real advice,
-  and reads like casual personal experience ("I used it for X") not a recommendation
+  reads like passive personal experience ("I used X's [feature] for Y"), names a specific
+  feature, and contains no URL
 
 Reject ONLY if:
 - The reply is mostly an advertisement with little real advice
 - The reply ignores what the poster actually asked
-- The reply opens with a product mention instead of leading with advice
+- The reply opens with (or closes with) a product mention instead of leading with advice
+- The reply makes an overt "you should use EZCollegeApp" pitch rather than passive experience
+- The reply contains a URL or link
 - The reply makes false claims (e.g. guarantees admission)
 
-When in doubt, approve — a helpful student reply with a soft personal mention is fine.
+When in doubt, approve — a helpful student reply with a soft passive mention is fine.
 """
 
 _SELF_CRITIQUE_USER = """
@@ -63,14 +67,17 @@ class ReplyAgent:
         reddit: RedditTool,
         memory: MemoryTool,
         max_daily_replies: int = 10,
+        rag: RAGTool | None = None,
     ):
         self.llm = llm
         self.reddit = reddit
         self.memory = memory
         self.max_daily_replies = max_daily_replies
+        self.rag = rag
         self._prompts = load_yaml_prompt("reply_prompt.yaml")
         self._product_context = load_md("product_context.md")
         self._brand_voice = load_md("brand_voice.md")
+        self._advertorial_strategy = load_md("advertorial_strategy.md")
 
     # ------------------------------------------------------------------
     # Public
@@ -89,12 +96,19 @@ class ReplyAgent:
 
         subreddit_guide = load_subreddit_guide(post.subreddit)
 
+        if self.rag is not None:
+            knowledge_context = RAGTool.format_context(self.rag.retrieve(post))
+        else:
+            knowledge_context = "No specific knowledge-base entries retrieved."
+
         system = render(
             self._prompts["system_prompt"],
             subreddit=post.subreddit,
             product_context=self._product_context,
             brand_voice=self._brand_voice,
             subreddit_guide=subreddit_guide or "No specific guide available.",
+            knowledge_context=knowledge_context,
+            advertorial_strategy=self._advertorial_strategy,
         )
         user = render(
             self._prompts["user_prompt"],

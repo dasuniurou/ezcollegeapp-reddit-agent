@@ -2,6 +2,8 @@
 
 An LLM-powered Reddit marketing agent that monitors college application subreddits, replies to relevant posts with genuine advice that naturally mentions EZCollegeApp, and creates on-demand promotional posts.
 
+Replies are **grounded in a 300-entry college-admissions knowledge base** via semantic retrieval (RAG), so the advice is accurate and specific. The product mention is a single passive, feature-specific aside placed after the real advice — never a pitch, never a URL.
+
 ---
 
 ## Table of Contents
@@ -10,6 +12,7 @@ An LLM-powered Reddit marketing agent that monitors college application subreddi
 - [Project Structure](#project-structure)
 - [Setup](#setup)
 - [Configuration](#configuration)
+- [Knowledge Base & RAG](#knowledge-base--rag)
 - [JSON Files Reference](#json-files-reference)
 - [Prompt Files Reference](#prompt-files-reference)
 - [Running the Agent](#running-the-agent)
@@ -51,6 +54,7 @@ An LLM-powered Reddit marketing agent that monitors college application subreddi
 │                       Shared Tools                          │
 │  LLMClient (OpenAI / Gemini)  │  RedditTool (PRAW)         │
 │  MemoryTool (JSON state)      │  PromptLoader (YAML / MD)  │
+│  RAGTool (semantic retrieval over the knowledge base)      │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -73,9 +77,11 @@ MonitorAgent.scan(subreddits)
         ▼
 ReplyAgent.reply(post)
   ├── Check daily reply limit
-  ├── Load prompts (product_context.md, brand_voice.md, subreddit guide)
-  ├── LLM call → generate reply
-  ├── LLM self-critique → approve or reject
+  ├── RAGTool.retrieve(post)   → top-k knowledge-base entries (fail-open → none)
+  ├── Load prompts (product_context.md, brand_voice.md, advertorial_strategy.md,
+  │     subreddit guide) + inject retrieved knowledge
+  ├── LLM call → generate reply (grounded advice + passive feature-specific mention)
+  ├── LLM self-critique → approve or reject (also rejects URLs / overt pitches)
   └── If approved:
         ├── RedditTool.reply_to_post()  [live / dry-run / review]
         └── MemoryTool.mark_replied() + log_reply()
@@ -109,14 +115,21 @@ ezcommon_market_agent/
 │   └── post_agent.py               # On-demand promotional post generator
 │
 ├── tools/                          # Shared low-level tools
-│   ├── llm_client.py               # OpenAI / Gemini unified interface
+│   ├── llm_client.py               # OpenAI / Gemini chat + OpenAI embeddings
 │   ├── reddit_tool.py              # PRAW wrapper (dry-run, review-mode aware)
 │   ├── memory_tool.py              # Read/write state.json and reply_log.json
+│   ├── rag_tool.py                 # Semantic retrieval over the knowledge base
 │   └── prompt_loader.py            # Loads YAML prompt templates and .md files
+│
+├── knowledge_base/                 # RAG knowledge base + cached embeddings
+│   ├── general-all-merged.json     # 300 sourced college-admissions entries
+│   ├── advertorial-agent-knowledge-base.md  # Full product/feature reference
+│   └── embeddings_cache.npz        # Cached vectors (committed; auto-rebuilds on change)
 │
 ├── prompts/                        # Prompt templates and context files
 │   ├── product_context.md          # What EZCollegeApp is (injected into every prompt)
 │   ├── brand_voice.md              # Tone and style rules
+│   ├── advertorial_strategy.md     # Soft-ad strategy: pain→feature map, varied framing
 │   ├── subreddit_ApplyingToCollege.md  # Per-subreddit personality guide
 │   ├── reply_prompt.yaml           # System + user prompt for reply generation
 │   └── post_prompt.yaml            # System + user prompt for post generation
@@ -151,11 +164,26 @@ ezcommon_market_agent/
 
 ## Setup
 
+### Prerequisites
+
+- **Python 3.10+** (the code uses `X | None` type syntax).
+- An **OpenAI API key** (required — used for RAG embeddings even if you chat via Gemini).
+- A **Reddit account + app credentials** (only needed to actually post; reads and dry-run work without them).
+
 ### 1. Install dependencies
 
+A virtual environment is recommended:
+
 ```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
 pip install -r requirements.txt
 ```
+
+Dependencies (`requirements.txt`): `openai`, `google-generativeai`, `praw` (Reddit writes),
+`requests` (Reddit reads), `numpy` (RAG similarity), `pyyaml`, `python-dotenv`, `apscheduler`
+(scheduler), `pytest` + `pytest-mock` (tests).
 
 ### 2. Configure environment variables
 
@@ -166,10 +194,10 @@ cp .env.example .env
 Edit `.env` and fill in your credentials:
 
 ```env
-# LLM Provider (pick one)
-OPENAI_API_KEY=sk-...
+# LLM Provider (pick one for chat)
+OPENAI_API_KEY=sk-...        # REQUIRED — also used for RAG embeddings even if LLM_PROVIDER=gemini
 GEMINI_API_KEY=...
-LLM_PROVIDER=openai          # openai | gemini
+LLM_PROVIDER=openai          # openai | gemini (controls chat only; embeddings are always OpenAI)
 
 # Reddit API (create an app at https://www.reddit.com/prefs/apps)
 REDDIT_CLIENT_ID=...
@@ -213,11 +241,54 @@ llm:
   provider: openai           # Overridden by LLM_PROVIDER env var
   openai_model: gpt-4o
   gemini_model: gemini-1.5-pro
+  openai_embed_model: text-embedding-3-small  # RAG always embeds via OpenAI
+
+rag:
+  enabled: true              # Set false to reply without knowledge-base grounding
+  top_k: 3                   # Knowledge-base entries injected per reply
+  kb_file: knowledge_base/general-all-merged.json
+  cache_file: knowledge_base/embeddings_cache.npz
 
 reddit:
   post_limit: 25             # How many posts to scan per subreddit per run
   scan_interval_seconds: 3600  # How often the scheduler triggers (1 hour)
 ```
+
+---
+
+## Knowledge Base & RAG
+
+Replies are grounded in a knowledge base so the advice is accurate and specific rather than
+generic model output.
+
+### How it works
+
+1. **`knowledge_base/general-all-merged.json`** holds 300 expert, sourced college-admissions
+   entries (title + content + tags).
+2. On first run, `RAGTool` embeds every entry with OpenAI `text-embedding-3-small` and caches the
+   vectors to **`knowledge_base/embeddings_cache.npz`**.
+3. For each candidate post, `RAGTool.retrieve()` embeds the post, ranks all entries by cosine
+   similarity, and injects the **top `top_k`** entries into the reply prompt as grounding.
+4. The model writes the advice from that grounded context, then adds one passive, feature-specific
+   EZCollegeApp mention (per `prompts/advertorial_strategy.md`).
+
+### The embedding cache
+
+- The cache is **committed to git**, so every clone/account reuses the same vectors with **no
+  re-embedding cost** on first run.
+- It is keyed by a fingerprint of `(knowledge base file bytes + embedding model)`. If you edit
+  `general-all-merged.json` or change the embed model, the cache **auto-rebuilds** on the next run
+  (and you should commit the regenerated `.npz`).
+- To force a rebuild, delete `knowledge_base/embeddings_cache.npz` and run any monitor cycle.
+
+### Fail-open behavior
+
+If embeddings are unavailable (e.g. missing `OPENAI_API_KEY`) or retrieval errors, the agent logs
+a warning and replies **ungrounded** rather than crashing. Set `rag.enabled: false` in
+`settings.yaml` to disable retrieval entirely.
+
+> **Note:** RAG embeddings always use OpenAI, even when `LLM_PROVIDER=gemini`. An `OPENAI_API_KEY`
+> is required for grounded replies regardless of the chat provider.
 
 ---
 
@@ -309,6 +380,7 @@ All `.md` files in `prompts/` are **injected directly into LLM prompts at runtim
 |---|---|
 | `product_context.md` | Full description of EZCollegeApp (features, value prop, URL). Injected into every reply and post prompt. |
 | `brand_voice.md` | Tone rules: what to do and not do. Defines the "feel" of every reply. |
+| `advertorial_strategy.md` | Soft-ad strategy injected into reply prompts: pain→feature map, passive framing, the no-URL rule, and the varied-phrasing menu (so mentions don't read as templated). |
 | `subreddit_ApplyingToCollege.md` | Community-specific guide for r/ApplyingToCollege. Add more files named `subreddit_<name>.md` for additional subreddits. |
 | `reply_prompt.yaml` | YAML with `system_prompt` and `user_prompt` templates for reply generation. |
 | `post_prompt.yaml` | YAML with `system_prompt` and `user_prompt` templates for post generation. |
@@ -329,8 +401,8 @@ python main.py monitor
 # Story post (personal experience angle)
 python main.py post --subreddit ApplyingToCollege --format story
 
-# Resource-share post
-python main.py post --subreddit college --format resource
+# Tips post ("things I wish I knew")
+python main.py post --subreddit college --format tips
 
 # Question-style post with a custom angle
 python main.py post --subreddit ApplyingToCollege --format question \

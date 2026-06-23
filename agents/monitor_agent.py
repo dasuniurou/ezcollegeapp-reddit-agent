@@ -4,6 +4,7 @@ Monitor Agent: scans subreddits for relevant posts and filters out already-repli
 from __future__ import annotations
 
 import logging
+import re
 from typing import Generator
 
 from tools.llm_client import LLMClient
@@ -52,6 +53,7 @@ class MonitorAgent:
         self.memory = memory
         self.keywords = [kw.lower() for kw in keywords]
         self.post_limit = post_limit
+        self._keyword_re = self._compile_keywords(self.keywords)
 
     # ------------------------------------------------------------------
     # Public
@@ -82,9 +84,25 @@ class MonitorAgent:
     # Internal
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _compile_keywords(keywords: list[str]) -> re.Pattern | None:
+        """Build one word-boundary regex from the keyword list.
+
+        Word boundaries prevent false positives that plain substring matching
+        causes (e.g. "sat" matching "Saturday", "ed" matching "edited"), so short
+        abbreviations like "ED", "EA", "GPA" are safe to include as keywords.
+        """
+        if not keywords:
+            return None
+        # Longest-first so multi-word phrases win over their sub-tokens.
+        alts = "|".join(re.escape(kw) for kw in sorted(keywords, key=len, reverse=True))
+        return re.compile(rf"\b(?:{alts})\b", re.IGNORECASE)
+
     def _keyword_match(self, post: RedditPost) -> bool:
-        text = (post.title + " " + post.body).lower()
-        return any(kw in text for kw in self.keywords)
+        if self._keyword_re is None:
+            return False
+        text = f"{post.title} {post.body}"
+        return self._keyword_re.search(text) is not None
 
     def _is_relevant(self, post: RedditPost) -> bool:
         import json as _json
